@@ -18,8 +18,6 @@ DAO.prototype = {
     save: Q.async(function*(conn, obj, opts) {
         const self = this;
 
-        obj.validate();
-
         const model = obj.__model__;
         const preCreate = model.hooks.preCreate;
         const postCreate = model.hooks.postCreate;
@@ -29,6 +27,8 @@ DAO.prototype = {
                 preCreate[i].call(obj.__self__);
             }
         }
+
+        obj.validate();
 
         const attrs = obj.attr();
         const attrNames = Object.keys(attrs);
@@ -77,8 +77,6 @@ DAO.prototype = {
     update: Q.async(function*(conn, obj, opts) {
         const self = this;
 
-        obj.validate();
-
         const model = obj.__model__;
         const preUpdate = model.hooks.preUpdate;
         const postUpdate = model.hooks.postUpdate;
@@ -88,6 +86,8 @@ DAO.prototype = {
                 preUpdate[i].call(obj.__self__);
             }
         }
+
+        obj.validate();
 
         const attrs = obj.changed();
         const attrNames = Object.keys(attrs);
