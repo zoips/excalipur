@@ -13,7 +13,7 @@ const TestType = Model.define({
     name: { type: String },
     description: { type: String, default: "" }
 }, {
-    table: "product_types"
+    table: "test_types"
 });
 
 function TestTypeDAO() {
