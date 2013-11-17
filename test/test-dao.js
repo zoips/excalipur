@@ -145,6 +145,45 @@ describe("test type dao", function() {
                 }
             });
         });
+
+        it("only updates the correct model", function(done) {
+            Q.spawn(function*() {
+                try {
+                    let complete = false;
+
+                    yield DAO.inTransaction(client, Q.async(function*() {
+                        const m = yield dao.save(client, new TestType({
+                            name: "test thingy",
+                            description:  "cool awesome thingy"
+                        }), { schema: "test" });
+                        const m2 = yield dao.save(client, new TestType({
+                            name: "test thingy 2",
+                            description:  "cool awesome thingy 2"
+                        }), { schema: "test" });
+
+                        const m2a = yield dao.get(client, m2.id, { schema: "test" });
+
+                        m2a.description = "changed";
+
+                        yield dao.update(client, m2a, { schema : "test" });
+
+                        const mb = yield dao.get(client, m.id, { schema: "test" });
+                        const m2b = yield dao.get(client, m2.id, { schema: "test" });
+
+                        assert.strictEqual(mb.name, m.name, "name should not have changed");
+                        assert.strictEqual(mb.description, m.description, "name should not have changed");
+                        assert.strictEqual(m2b.name, m2a.name, "name should not have changed");
+                        assert.strictEqual(m2b.description, m2a.description, "description should have changed");
+                        complete = true;
+                    }), { readOnly: true });
+
+                    assert.ok(complete, "did not complete");
+                    done(null);
+                } catch (ex) {
+                    done(ex);
+                }
+            });
+        })
     });
 
     describe("#destroy", function() {

@@ -91,22 +91,23 @@ DAO.prototype = {
 
         const attrs = obj.changed();
         const attrNames = Object.keys(attrs);
-        const attrValues = [];
+        const values = [obj.id];
         const q = squel.update({ usingValuePlaceholders: true })
-            .table(opts && opts.schema ? opts.schema + "." + model.table : model.table);
+            .table(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .where(model.id + " = $1");
 
-        for (let i = 0, p = 0; i < attrNames.length; i++) {
+        for (let i = 0, p = 1; i < attrNames.length; i++) {
             const attrName = attrNames[i];
             const columnName = model.attrs[attrNames[i]].column || attrName;
             const attrValue = attrs[attrName];
 
             q.set(columnName, "$" + (++p));
-            attrValues.push(attrValue);
+            values.push(attrValue);
         }
 
         q.returning("*");
 
-        const res = yield Q.ninvoke(conn, "query", q.toString(), attrValues);
+        const res = yield Q.ninvoke(conn, "query", q.toString(), values);
 
         if (res.rows[0]) {
             const resAttrs = Object.keys(res.rows[0]);
