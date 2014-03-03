@@ -15,7 +15,7 @@
     },
     "main": "src/main",
     "dependencies": {
-        "pg": "~2.8.0",
+        "pg": "~2.11.1",
         "bluebird": "~1.0.7",
         "underscore": "~1.5.2",
         "squel": "~2.0.0"
