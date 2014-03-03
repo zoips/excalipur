@@ -1,7 +1,7 @@
 "use strict";
 
 const squel = require("squel");
-const Q = require("q");
+const bluebird = require("bluebird");
 const _ = require("underscore");
 
 squel.useFlavour("postgres");
@@ -15,7 +15,7 @@ function DAO(model) {
 DAO.prototype = {
     model: null,
 
-    save: Q.async(function*(conn, obj, opts) {
+    save: bluebird.coroutine(function*(conn, obj, opts) {
         const self = this;
 
         const model = obj.__model__;
@@ -51,7 +51,7 @@ DAO.prototype = {
 
         q.returning("*");
 
-        const res = yield Q.ninvoke(conn, "query", q.toString(), attrValues);
+        const res = yield conn.queryAsync(q.toString(), attrValues);
 
         if (res.rows[0]) {
             const resAttrs = Object.keys(res.rows[0]);
@@ -74,7 +74,7 @@ DAO.prototype = {
         return obj;
     }),
 
-    update: Q.async(function*(conn, obj, opts) {
+    update: bluebird.coroutine(function*(conn, obj, opts) {
         const self = this;
 
         const model = obj.__model__;
@@ -107,7 +107,7 @@ DAO.prototype = {
 
         q.returning("*");
 
-        const res = yield Q.ninvoke(conn, "query", q.toString(), values);
+        const res = yield conn.queryAsync(q.toString(), values);
 
         if (res.rows[0]) {
             const resAttrs = Object.keys(res.rows[0]);
@@ -128,7 +128,7 @@ DAO.prototype = {
         }
     }),
 
-    destroy: Q.async(function*(conn, id, opts) {
+    destroy: bluebird.coroutine(function*(conn, id, opts) {
         const self = this;
         const model = self.model;
         const q = squel.delete()
@@ -143,7 +143,7 @@ DAO.prototype = {
             }
         }
 
-        yield Q.ninvoke(conn, "query", q.toString(), [id]);
+        yield conn.queryAsync(q.toString(), [id]);
 
         if (_.isArray(postDestroy)) {
             for (let i = 0; i < postDestroy.length; i++) {
@@ -152,13 +152,13 @@ DAO.prototype = {
         }
     }),
 
-    get: Q.async(function*(conn, id, opts) {
+    get: bluebird.coroutine(function*(conn, id, opts) {
         const self = this;
         const model = self.model;
         const q = squel.select()
             .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
             .where(model.id + " = $1");
-        const res = yield Q.ninvoke(conn, "query", q.toString(), [id]);
+        const res = yield conn.queryAsync(q.toString(), [id]);
 
         if (res.rows.length === 1) {
             return new model.modelConstructor(res.rows[0]);
@@ -187,13 +187,13 @@ DAO.prototype = {
         return self.query(conn, q);
     },
 
-    count: Q.async(function*(conn, opts) {
+    count: bluebird.coroutine(function*(conn, opts) {
         const self = this;
         const model = self.model;
         const q = squel.select()
             .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
             .field("count(*)");
-        const res = yield Q.ninvoke(conn, "query", q.toString());
+        const res = yield conn.queryAsync(q.toString());
 
         if (res.rows.length === 1) {
             return parseInt(res.rows[0].count, 10);
@@ -204,7 +204,7 @@ DAO.prototype = {
 
     query: function(conn, q) {
         const self = this;
-        const d = Q.defer();
+        const d = bluebird.defer();
         const query = conn.query(q.toString(), _.toArray(arguments).slice(2));
         let uniqueResult = false;
         let collectResults = false;
@@ -223,7 +223,7 @@ DAO.prototype = {
                 res.push(m);
             }
 
-            d.notify(m);
+            d.progress(m);
         });
         query.on("end", function() {
             if (uniqueResult || collectResults) {
@@ -253,18 +253,18 @@ DAO.prototype = {
     }
 };
 
-DAO.inTransaction = Q.async(function*(conn, fn, opts) {
+DAO.inTransaction = bluebird.coroutine(function*(conn, fn, opts) {
     try {
-        yield Q.ninvoke(conn, "query", "BEGIN;");
+        yield conn.queryAsync("BEGIN;");
         yield fn();
 
         if (opts && opts.readOnly) {
-            yield Q.ninvoke(conn, "query", "ROLLBACK;");
+            yield conn.queryAsync("ROLLBACK;");
         } else {
-            yield Q.ninvoke(conn, "query", "COMMIT;");
+            yield conn.queryAsync("COMMIT;");
         }
     } catch (ex) {
-        yield Q.ninvoke(conn, "query", "ROLLBACK;");
+        yield conn.queryAsync("ROLLBACK;");
 
         throw ex;
     }

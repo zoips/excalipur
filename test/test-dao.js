@@ -4,7 +4,7 @@ const pg = require("pg");
 const util = require("util");
 const assert = require("assert");
 const DAO = require("../src/dao");
-const Q = require("q");
+const bluebird = require("bluebird");
 const Model = require("../src/model");
 const squel = require("squel");
 
@@ -26,13 +26,13 @@ TestTypeDAO.prototype = Object.create(DAO.prototype);
 
 describe("test type dao", function() {
 
-    const client = new pg.Client(util.format("postgres://%s:%s@localhost/excalipur_test", process.env["DB_USER"], process.env["DB_PASSWORD"]));
+    const client = bluebird.promisifyAll(new pg.Client(util.format("postgres://%s:%s@localhost/excalipur_test", process.env["DB_USER"], process.env["DB_PASSWORD"])));
     const dao = new TestTypeDAO();
 
     before(function(done) {
-        Q.spawn(function*() {
+        bluebird.spawn(function*() {
             try {
-                yield Q.ninvoke(client, "connect");
+                yield client.connectAsync();
                 //yield Q.ninvoke(client, "query", "SET search_path = test,public");
 
                 done(null);
@@ -44,11 +44,11 @@ describe("test type dao", function() {
 
     describe("#save", function() {
         it("can save", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     let complete = false;
 
-                    yield DAO.inTransaction(client, Q.async(function*() {
+                    yield DAO.inTransaction(client, bluebird.coroutine(function*() {
                         const m = new TestType({ name: "test thingy", "description": "cool awesome thingy" });
                         const m2 = yield dao.save(client, m, { schema: "test" });
 
@@ -73,9 +73,9 @@ describe("test type dao", function() {
         let model;
 
         beforeEach(function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
-                    yield Q.ninvoke(client, "query", "BEGIN;");
+                    yield client.queryAsync("BEGIN;");
 
                     model = yield dao.save(client, new TestType({
                         name: "test thingy",
@@ -94,7 +94,7 @@ describe("test type dao", function() {
         });
 
         it("can get by id", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const m = yield dao.get(client, model.id, { schema: "test" });
 
@@ -113,11 +113,11 @@ describe("test type dao", function() {
 
     describe("#update", function() {
         it("can update a model", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     let complete = false;
 
-                    yield DAO.inTransaction(client, Q.async(function*() {
+                    yield DAO.inTransaction(client, bluebird.coroutine(function*() {
                         const m = yield dao.save(client, new TestType({
                             name: "test thingy",
                             description:  "cool awesome thingy"
@@ -147,11 +147,11 @@ describe("test type dao", function() {
         });
 
         it("only updates the correct model", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     let complete = false;
 
-                    yield DAO.inTransaction(client, Q.async(function*() {
+                    yield DAO.inTransaction(client, bluebird.coroutine(function*() {
                         const m = yield dao.save(client, new TestType({
                             name: "test thingy",
                             description:  "cool awesome thingy"
@@ -188,11 +188,11 @@ describe("test type dao", function() {
 
     describe("#destroy", function() {
         it("can destroy a model", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     let complete = false;
 
-                    yield DAO.inTransaction(client, Q.async(function*() {
+                    yield DAO.inTransaction(client, bluebird.coroutine(function*() {
                         const m = yield dao.save(client, new TestType({
                             name: "test thingy",
                             description: "cool awesome thingy"
@@ -221,9 +221,9 @@ describe("test type dao", function() {
         const models = [];
 
         beforeEach(function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
-                    yield Q.ninvoke(client, "query", "BEGIN;");
+                    yield client.queryAsync("BEGIN;");
 
                     for (let i = 0; i < 10; i++) {
                         const model = yield dao.save(client, new TestType({
@@ -247,12 +247,12 @@ describe("test type dao", function() {
         });
 
         it("can list models", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const p = dao.list(client, { schema: "test" });
                     const resModels = [];
 
-                    p.progress(function(m) {
+                    p.progressed(function(m) {
                         resModels.push(m);
                     });
 
@@ -282,7 +282,7 @@ describe("test type dao", function() {
         });
 
         it("can list models with offset and limit", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const resModels = [];
                     let offset = 0;
@@ -292,7 +292,7 @@ describe("test type dao", function() {
                         const p = dao.list(client, { offset: offset, limit: 3, schema: "test" });
                         let c = 0;
 
-                        p.progress(function(m) {
+                        p.progressed(function(m) {
                             assert.ok(!seen.hasOwnProperty(m.id), "should not have duplicate models");
                             seen[m.id] = m;
                             resModels.push(m);
@@ -333,9 +333,9 @@ describe("test type dao", function() {
         const models = [];
 
         beforeEach(function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
-                    yield Q.ninvoke(client, "query", "BEGIN;");
+                    yield client.queryAsync("BEGIN;");
 
                     for (let i = 0; i < 10; i++) {
                         const model = yield dao.save(client, new TestType({
@@ -359,7 +359,7 @@ describe("test type dao", function() {
         });
 
         it("can query for a unique model", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const q = squel.select()
                         .from("test." + TestType.prototype.table)
@@ -377,7 +377,7 @@ describe("test type dao", function() {
         });
 
         it("can query for multiple models", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const q = squel.select()
                         .from("test." + TestType.prototype.table)
@@ -386,7 +386,7 @@ describe("test type dao", function() {
                     const res = [];
 
                     yield dao.query(client, q, "test thingy 3", "test thingy 5")
-                        .progress(function(m) { res.push(m); });
+                        .progressed(function(m) { res.push(m); });
 
                     assert.strictEqual(res.length, 2, "should have two models");
                     assert.strictEqual(res[0].name, "test thingy 3", "should have gotten test thingy 3");
@@ -400,7 +400,7 @@ describe("test type dao", function() {
         });
 
         it("can collect results when querying for multiple models", function(done) {
-            Q.spawn(function*() {
+            bluebird.spawn(function*() {
                 try {
                     const q = squel.select()
                         .from("test." + TestType.prototype.table)
