@@ -299,7 +299,8 @@ function define(attrs, opts) {
 }
 
 const Types = {
-    Serial: {}
+    Serial: {},
+    UUID: {}
 };
 
 module.exports = {
