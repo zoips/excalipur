@@ -109,6 +109,25 @@ describe("test type dao", function() {
                 }
             });
         });
+
+        it("can use default schema", function(done) {
+            bluebird.spawn(function*() {
+                try {
+                    dao.schema = "test";
+
+                    const m = yield dao.get(client, model.id);
+
+                    assert.ok(m !== null, "model should be returned");
+                    assert.strictEqual(m.id, model.id, "ids should be the same");
+                    assert.strictEqual(m.name, model.name, "names should be the same");
+                    assert.strictEqual(m.description, model.description, "descriptions should be the same");
+
+                    done(null);
+                } catch (ex) {
+                    done(ex);
+                }
+            });
+        });
     });
 
     describe("#update", function() {

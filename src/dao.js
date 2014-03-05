@@ -6,18 +6,23 @@ const _ = require("underscore");
 
 squel.useFlavour("postgres");
 
-function DAO(model) {
+function tableRef(schema, table) {
+    return schema ? schema + "." + table : table;
+}
+
+function DAO(model, schema) {
     const self = this;
 
     self.model = model;
+    self.schema = schema || null;
 }
 
 DAO.prototype = {
     model: null,
+    schema: null,
 
     save: bluebird.coroutine(function*(conn, obj, opts) {
         const self = this;
-
         const model = obj.__model__;
         const preCreate = model.hooks.preCreate;
         const postCreate = model.hooks.postCreate;
@@ -34,7 +39,7 @@ DAO.prototype = {
         const attrNames = Object.keys(attrs);
         const attrValues = [];
         const q = squel.insert({ usingValuePlaceholders: true })
-            .into(opts && opts.schema ? opts.schema + "." + model.table : model.table);
+            .into(tableRef(opts && opts.schema || self.schema, model.table));
 
         for (let i = 0, p = 0; i < attrNames.length; i++) {
             const attrName = attrNames[i];
@@ -93,7 +98,7 @@ DAO.prototype = {
         const attrNames = Object.keys(attrs);
         const values = [obj.id];
         const q = squel.update({ usingValuePlaceholders: true })
-            .table(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .table(tableRef(opts && opts.schema || self.schema, model.table))
             .where(model.id + " = $1");
 
         for (let i = 0, p = 1; i < attrNames.length; i++) {
@@ -132,7 +137,7 @@ DAO.prototype = {
         const self = this;
         const model = self.model;
         const q = squel.delete()
-            .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .from(tableRef(opts && opts.schema || self.schema, model.table))
             .where(model.id + " = $1");
         const preDestroy = model.hooks.preDestroy;
         const postDestroy = model.hooks.postDestroy;
@@ -156,7 +161,7 @@ DAO.prototype = {
         const self = this;
         const model = self.model;
         const q = squel.select()
-            .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .from(tableRef(opts && opts.schema || self.schema, model.table))
             .where(model.id + " = $1");
         const res = yield conn.queryAsync(q.toString(), [id]);
 
@@ -171,7 +176,7 @@ DAO.prototype = {
         const self = this;
         const model = self.model;
         const q = squel.select()
-            .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .from(tableRef(opts && opts.schema || self.schema, model.table))
             .order(model.id);
 
         if (opts) {
@@ -191,7 +196,7 @@ DAO.prototype = {
         const self = this;
         const model = self.model;
         const q = squel.select()
-            .from(opts && opts.schema ? opts.schema + "." + model.table : model.table)
+            .from(tableRef(opts && opts.schema || self.schema, model.table))
             .field("count(*)");
         const res = yield conn.queryAsync(q.toString());
 
