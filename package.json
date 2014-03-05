@@ -13,7 +13,7 @@
     "directories": {
         "src": "./src"
     },
-    "main": "src/main",
+    "main": "src/index",
     "dependencies": {
         "pg": "~2.11.1",
         "bluebird": "~1.0.7",
