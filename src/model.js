@@ -154,6 +154,8 @@ function ModelInstance(attrs, argv) {
 
         if (attrs && attrs.hasOwnProperty(attrName)) {
             value = attrs[attrName];
+        } else if (attr.column && attrs.hasOwnProperty(attr.column)) {
+            value = attrs[attr.column];
         } else if (typeof attr.default === "function") {
             value = attr.default();
         } else if (attr.defaultOfType) {
