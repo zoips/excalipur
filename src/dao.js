@@ -261,13 +261,16 @@ DAO.prototype = {
 DAO.inTransaction = bluebird.coroutine(function*(conn, fn, opts) {
     try {
         yield conn.queryAsync("BEGIN;");
-        yield fn();
+
+        const res = yield fn();
 
         if (opts && opts.readOnly) {
             yield conn.queryAsync("ROLLBACK;");
         } else {
             yield conn.queryAsync("COMMIT;");
         }
+
+        return res;
     } catch (ex) {
         yield conn.queryAsync("ROLLBACK;");
 
