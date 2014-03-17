@@ -96,31 +96,34 @@ DAO.prototype = {
 
         const attrs = obj.changed();
         const attrNames = Object.keys(attrs);
-        const values = [obj.id];
-        const q = squel.update({ usingValuePlaceholders: true })
-            .table(DAO.tableRef(opts && opts.schema || self.schema, model.table))
-            .where(model.id + " = $1");
 
-        for (let i = 0, p = 1; i < attrNames.length; i++) {
-            const attrName = attrNames[i];
-            const columnName = model.attrs[attrNames[i]].column || attrName;
-            const attrValue = attrs[attrName];
+        if (attrNames.length > 0) {
+            const values = [obj.id];
+            const q = squel.update({ usingValuePlaceholders: true })
+                .table(DAO.tableRef(opts && opts.schema || self.schema, model.table))
+                .where(model.id + " = $1");
 
-            q.set(columnName, "$" + (++p));
-            values.push(attrValue);
-        }
+            for (let i = 0, p = 1; i < attrNames.length; i++) {
+                const attrName = attrNames[i];
+                const columnName = model.attrs[attrNames[i]].column || attrName;
+                const attrValue = attrs[attrName];
 
-        q.returning("*");
+                q.set(columnName, "$" + (++p));
+                values.push(attrValue);
+            }
 
-        const res = yield conn.queryAsync(q.toString(), values);
+            q.returning("*");
 
-        if (res.rows[0]) {
-            const resAttrs = Object.keys(res.rows[0]);
+            const res = yield conn.queryAsync(q.toString(), values);
 
-            for (let i = 0; i < resAttrs.length; i++) {
-                const attrName = resAttrs[i];
+            if (res.rows[0]) {
+                const resAttrs = Object.keys(res.rows[0]);
 
-                obj[attrName] = res.rows[0][attrName];
+                for (let i = 0; i < resAttrs.length; i++) {
+                    const attrName = resAttrs[i];
+
+                    obj[attrName] = res.rows[0][attrName];
+                }
             }
         }
 
@@ -131,6 +134,8 @@ DAO.prototype = {
                 postUpdate[i].call(obj.__self__);
             }
         }
+
+        return obj;
     }),
 
     destroy: bluebird.coroutine(function*(conn, id, opts) {
