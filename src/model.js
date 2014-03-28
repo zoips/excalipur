@@ -2,6 +2,8 @@
 
 const _ = require("underscore");
 const EventEmitter = require("events").EventEmitter;
+const validations = require("./validations");
+
 
 function Model(attrs, opts) {
     const self = this;
@@ -119,8 +121,39 @@ Model.prototype = {
             }
         },
 
-        validate: function(name) {
+        validate: function() {
             const self = this;
+            const failed = [];
+
+            if (self.validations) {
+                Object.keys(self.validations).forEach(function(prop) {
+                    for (let i = 0; i < self.validations[prop].length; i++) {
+                        const validation = self.validations[prop][i];
+                        let fn;
+                        let args = [self.values.current[prop]];
+
+                        if (_.isArray(validation)) {
+                            fn = validation[0];
+                            args = args.concat(validation.slice(1));
+                        } else if (typeof validation === "function") {
+                            fn = validation;
+                        } else {
+                            throw new Error("Expected validation function, got " + validation);
+                        }
+
+                        const res = fn.apply(self, args);
+
+                        if (!res[0]) {
+                            failed.push([prop, res[1]]);
+                        }
+                    }
+                });
+
+            }
+
+            if (failed.length > 0) {
+                throw new validations.ValidationError(failed);
+            }
         }
     }
 };

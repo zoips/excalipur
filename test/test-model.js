@@ -2,6 +2,7 @@
 
 const assert = require("assert");
 const Model = require("../src/model");
+const validations = require("../src/validations");
 
 describe("base model", function() {
 
@@ -266,5 +267,117 @@ describe("base model", function() {
         const t = new TestA({ name: "foo" });
 
         assert.strictEqual(t.capName(), "FOO", "should capitalize name");
+    });
+
+    it("throws on simple validation error", function() {
+        const TestA = Model.define({
+            name: { type: String },
+            description: { type: String, default: "" },
+            createdDate: { type: Date }
+        }, {
+            validations: {
+                name: [validations.isString],
+                description: [validations.isString],
+                createdDate: [validations.isDate]
+            }
+        });
+        const t = new TestA({ createdDate: new Date() });
+
+        try {
+            t.validate();
+
+            assert.fail("validation should have failed");
+        } catch (ex) {
+            assert.equal(ex.failed.length, 1);
+            assert.equal(ex.failed[0][0], "name");
+        }
+    });
+
+    it("throws on validation error with validation args", function() {
+        const TestA = Model.define({
+            name: { type: String },
+            description: { type: String, default: "" },
+            rating: { type: Number },
+            createdDate: { type: Date }
+        }, {
+            validations: {
+                name: [validations.isString],
+                description: [validations.isString],
+                rating: [[validations.isInRange, 0, 10]],
+                createdDate: [validations.isDate]
+            }
+        });
+        const t = new TestA({ name: "test", rating: 11, createdDate: new Date() });
+
+        try {
+            t.validate();
+
+            assert.fail("validation should have failed");
+        } catch (ex) {
+            assert.equal(ex.failed.length, 1);
+            assert.equal(ex.failed[0][0], "rating");
+        }
+    });
+
+    it("throws on validation error when passes on validation but fails other", function() {
+        const TestA = Model.define({
+            name: { type: String },
+            description: { type: String, default: "" },
+            rating: { type: Number },
+            createdDate: { type: Date }
+        }, {
+            validations: {
+                name: [validations.isNotNull, validations.isString],
+                description: [validations.isString],
+                createdDate: [validations.isDate]
+            }
+        });
+        const t = new TestA({ name: 55, createdDate: new Date() });
+
+        try {
+            t.validate();
+
+            assert.fail("validation should have failed");
+        } catch (ex) {
+            assert.equal(ex.failed.length, 1);
+            assert.equal(ex.failed[0][0], "name");
+            assert.equal(ex.failed[0][1], "expected string");
+        }
+    });
+
+    it("throws on validation error for multiple validation failures", function() {
+        const TestA = Model.define({
+            name: { type: String },
+            description: { type: String, default: "" },
+            rating: { type: Number },
+            createdDate: { type: Date }
+        }, {
+            validations: {
+                name: [validations.isNotNull, validations.isString],
+                description: [validations.isString],
+                rating: [[validations.isInRange, 0, 10]],
+                createdDate: [validations.isDate]
+            }
+        });
+        const t = new TestA({ name: 55, rating: 11, createdDate: new Date() });
+
+        try {
+            t.validate();
+
+            assert.fail("validation should have failed");
+        } catch (ex) {
+            let found = 0;
+            let shouldHave = {name: 1, rating: 1};
+
+            assert.equal(ex.failed.length, 2);
+
+            for (let i = 0; i < ex.failed.length; i++) {
+                if (ex.failed[i][0] in shouldHave) {
+                    found++;
+                }
+            }
+
+            assert.equal(found, 2);
+        }
     });
 });
