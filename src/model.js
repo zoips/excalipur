@@ -268,7 +268,7 @@ function ModelInstance(attrs, argv) {
 
         get: function(receiver, name) {
             if (name === "__model__") {
-                return self.__proto__;
+                return Object.getPrototypeOf(self);
             }
 
             if (name === "__self__") {

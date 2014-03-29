@@ -62,7 +62,8 @@ DAO.prototype = {
             const resAttrs = Object.keys(res.rows[0]);
 
             for (let i = 0; i < resAttrs.length; i++) {
-                const attrName = resAttrs[i];
+                // const scoping rules in jshint are wrong
+                const attrName = resAttrs[i]; // jshint ignore:line
 
                 obj[attrName] = res.rows[0][attrName];
             }
@@ -120,7 +121,8 @@ DAO.prototype = {
                 const resAttrs = Object.keys(res.rows[0]);
 
                 for (let i = 0; i < resAttrs.length; i++) {
-                    const attrName = resAttrs[i];
+                    // const scoping rules in jshint are wrong
+                    const attrName = resAttrs[i]; // jshint ignore:line
 
                     obj[attrName] = res.rows[0][attrName];
                 }
@@ -138,16 +140,18 @@ DAO.prototype = {
         return obj;
     }),
 
-    destroy: bluebird.coroutine(function*(conn, id, opts) {
+    destroy: bluebird.coroutine(function*(conn, objOrId, opts) {
         const self = this;
         const model = self.model;
         const q = squel.delete()
             .from(DAO.tableRef(opts && opts.schema || self.schema, model.table))
             .where(model.id + " = $1");
+        const obj = _.isObject(objOrId) ? objOrId : null;
+        const id = _.isObject(objOrId) ? objOrId.id : objOrId;
         const preDestroy = model.hooks.preDestroy;
         const postDestroy = model.hooks.postDestroy;
 
-        if (_.isArray(preDestroy)) {
+        if (_.isObject(obj) && _.isArray(preDestroy)) {
             for (let i = 0; i < preDestroy.length; i++) {
                 preDestroy[i].call(obj.__self__);
             }
@@ -155,7 +159,7 @@ DAO.prototype = {
 
         yield conn.queryAsync(q.toString(), [id]);
 
-        if (_.isArray(postDestroy)) {
+        if (_.isObject(obj) && _.isArray(postDestroy)) {
             for (let i = 0; i < postDestroy.length; i++) {
                 postDestroy[i].call(obj.__self__);
             }
@@ -277,7 +281,8 @@ DAO.inTransaction = bluebird.coroutine(function*(conn, fn, opts) {
 
         return res;
     } catch (ex) {
-        yield conn.queryAsync("ROLLBACK;");
+        // apparently jshint can't tell it's in a generator here...
+        yield conn.queryAsync("ROLLBACK;"); // jshint ignore:line
 
         throw ex;
     }
